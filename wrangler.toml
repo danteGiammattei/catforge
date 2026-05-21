@@ -1,11 +1,11 @@
-name = "mintforge"
+name = "catforge"
 compatibility_date = "2025-04-01"
 pages_build_output_dir = "dist"
 
 [[d1_databases]]
 binding = "DB"
-database_name = "mintforge"
+database_name = "catforgedb"
 # database_id will be filled in by wrangler when you run:
 #   npx wrangler d1 create mintforge
 # OR set it in the Cloudflare dashboard after creating the D1 database.
-database_id = "fb56dbbd-68e1-4ec1-83c4-eb475918f718"
+database_id = "2a4729ed-8769-492e-a0ac-9105395ee3d9"
