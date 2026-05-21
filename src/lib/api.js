@@ -6,8 +6,8 @@
  *  passed as a Bearer header.
  * ════════════════════════════════════════════════════════════════════════ */
 
-export const API_BASE  = ""; // same-origin
-export const TOKEN_KEY = "mintforge:token";
+export const API_BASE  = "";          // same-origin
+export const TOKEN_KEY = "catforge:token";
 
 export function apiClient(token) {
   const headers = { "Content-Type": "application/json" };
@@ -33,11 +33,5 @@ export function apiClient(token) {
     listFriends:  ()              => call("/api/friends",       "GET"),
     addFriend:    (username)      => call("/api/friends",       "POST",   { username }),
     removeFriend: (username)      => call("/api/friends",       "DELETE", { username }),
-    // Duels — friend coin battles
-    listDuels:    ()                                => call("/api/duels", "GET"),
-    createDuel:   (friendUsername, coinId)          => call("/api/duels", "POST", { action:"create",  friendUsername, coinId }),
-    acceptDuel:   (duelId, coinId)                  => call("/api/duels", "POST", { action:"accept",  duelId, coinId }),
-    declineDuel:  (duelId)                          => call("/api/duels", "POST", { action:"decline", duelId }),
-    flipDuel:     (duelId)                          => call("/api/duels", "POST", { action:"flip",    duelId }),
   };
 }
