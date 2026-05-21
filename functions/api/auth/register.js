@@ -8,7 +8,7 @@ export async function onRequestPost({ request, env }) {
   if (!username) return bad("Username must be 3–20 letters, numbers, or underscores");
   if (!validatePin(body?.pin)) return bad("PIN must be 4–6 digits");
 
-  const now = Date.now();
+  const now  = Date.now();
   const salt = randomHex(16);
   const hash = await hashPin(body.pin, salt);
 
@@ -19,12 +19,11 @@ export async function onRequestPost({ request, env }) {
     ).bind(username, hash, salt, now).run();
     const playerId = ins.meta.last_row_id;
 
-    await env.DB.batch([
-      env.DB.prepare(
-        `INSERT INTO player_state (player_id, xp, shovel_level, brush_level, frame, bio, selected_title)
-         VALUES (?1, 0, 1, 0, 'stone', '', 'Novice Digger')`
-      ).bind(playerId),
-    ]);
+    // Catforge-shape player_state: xp + field_state JSON + cosmetics JSON
+    await env.DB.prepare(
+      `INSERT INTO player_state (player_id, xp, field_state, cosmetics, updated_at)
+       VALUES (?1, 0, '{}', '{}', ?2)`
+    ).bind(playerId, now).run();
 
     const token = randomHex(24);
     await env.DB.prepare(
@@ -33,8 +32,7 @@ export async function onRequestPost({ request, env }) {
 
     return json({ token, player: { id: playerId, username } });
   } catch (e) {
-    // SQLite UNIQUE constraint failure text
     if (/UNIQUE constraint/i.test(e.message || "")) return bad("Username already taken", 409);
-    return bad("Could not create account", 500);
+    return bad("Could not create account: " + (e.message || "unknown"), 500);
   }
 }
