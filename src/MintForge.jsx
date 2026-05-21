@@ -47,6 +47,7 @@ import { GameContext } from "./lib/GameContext.js";
 
 // Screens
 import Vault from "./screens/Vault.jsx";
+import Forge from "./screens/Forge.jsx";
 import Shrine from "./screens/Shrine.jsx";
 // Old Hunt screen (sweep + signal + 4×4 dig grid) replaced by HuntSideScroller.
 // IdleField is a comfy-idle demo of a new direction — pastel cats-and-soup
@@ -56,13 +57,20 @@ import Hunt from "./screens/IdleField.jsx";
 // import Hunt from "./screens/HuntSideScroller.jsx";  // ← old skeleton scroller
 import Profile from "./screens/Profile.jsx";
 import Social from "./screens/Social.jsx";
+import Tavern from "./screens/Tavern.jsx";
 
 // Components
 import CoinCanvas    from "./components/CoinCanvas.jsx";
 import Particles     from "./components/Particles.jsx";
 import LuckyFanfare  from "./components/LuckyFanfare.jsx";
+import BrushReveal   from "./components/BrushReveal.jsx";
 import DigPit        from "./components/DigPit.jsx";
+import RouletteWheel from "./components/RouletteWheel.jsx";
+import RevealBanner  from "./components/RevealBanner.jsx";
+import CoinModal     from "./components/CoinModal.jsx";
 import ShovelIcon    from "./components/ShovelIcon.jsx";
+import PickaxeIcon   from "./components/PickaxeIcon.jsx";
+import TarotCard     from "./components/TarotCard.jsx";
 import BottomNav     from "./components/BottomNav.jsx";
 import MarksCounter  from "./components/MarksCounter.jsx";
 import AuthScreen    from "./components/AuthScreen.jsx";
@@ -1120,11 +1128,14 @@ export default function MintForge(){
         {tab==="hunt" && <Hunt/>}
 
         {/* ─── FORGE ─── */}
+        {tab==="forge" && <Forge/>}
+
         {/* ─── TAVERN ─── */}
         {/* ─── SHRINE ─── */}
         {tab==="shrine" && <Shrine/>}
 
         {/* ─── TAVERN ─── */}
+        {tab==="tavern" && <Tavern/>}
       </div>
 
       <BottomNav tab={tab} setTab={setTab} huntActive={phase==="dig"||phase==="brush"} t={t}/>
@@ -1238,6 +1249,8 @@ export default function MintForge(){
           ))}
         </div>
       )}
+      {phase==="banner"&&foundCoin&&<RevealBanner coin={foundCoin} onDone={onBannerDone}/>}
+      {selectedCoin&&<CoinModal coin={coins.find(c=>c.id===selectedCoin.id)||selectedCoin} onClose={()=>setSelectedCoin(null)} onToggleLock={toggleLock} onSell={sellCoin} t={t} isDark={isDark}/>}
 
       {/* Cabinet slot picker — opens when an empty cabinet slot is tapped.
           Shows all coins, tapping one assigns it to the slot. */}
