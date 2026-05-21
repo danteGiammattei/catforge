@@ -1,0 +1,149 @@
+/* ════════════════════════════════════════════════════════════════════════
+ *  MintForge global styles
+ *  ────────────────────────────────────────────────────────────────────────
+ *  Layered as: Tailwind base/components/utilities  →  fonts  →  keyframes →
+ *  utility classes that don't fit Tailwind's atomic model. Keyframes stay
+ *  here (rather than in tailwind.config.js) because they reference CSS vars
+ *  set by JS (--dx, --dy, --dr for dirtPuff/scrapFly etc.) which only work
+ *  in real keyframe rules.
+ * ════════════════════════════════════════════════════════════════════════ */
+
+@import url('https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,400;9..144,600;9..144,700;9..144,900&family=Outfit:wght@300;400;500;600;700;800;900&family=VT323&display=swap');
+
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+/* Resets that Tailwind's preflight doesn't fully cover for our needs */
+*       { box-sizing: border-box; margin: 0; padding: 0; }
+html,body{ height: 100%; overscroll-behavior: none; overflow-x: hidden; max-width: 100vw; }
+button  { -webkit-tap-highlight-color: transparent; }
+
+::-webkit-scrollbar              { width: 5px; height: 5px; }
+::-webkit-scrollbar-track        { background: transparent; }
+::-webkit-scrollbar-thumb        { background: rgba(212,160,23,.18); border-radius: 8px; }
+::-webkit-scrollbar-thumb:hover  { background: rgba(212,160,23,.32); }
+::selection { background: rgba(212,160,23,.3); color: #fff; }
+
+/* ──────────────────────────────────────────────────────────────────────────
+ * KEYFRAMES — animations referenced from inline styles + Tailwind animate-*
+ * Grouped by what they're for so removals are easy when something is retired.
+ * ──────────────────────────────────────────────────────────────────────── */
+
+/* Generic entrances */
+@keyframes fadein           { from { opacity: 0; transform: translateY(8px); } to   { opacity: 1; transform: translateY(0); } }
+@keyframes fadeinSlow       { from { opacity: 0; } to { opacity: 1; } }
+@keyframes slideUp          { from { opacity: 0; transform: translateY(40px); } to { opacity: 1; transform: translateY(0); } }
+@keyframes scaleIn          { from { opacity: 0; transform: scale(.92); }       to { opacity: 1; transform: scale(1); } }
+@keyframes flipReveal       { 0% { transform: scale(0.4) rotateY(180deg); opacity: 0; } 60% { transform: scale(1.15) rotateY(0deg); opacity: 1; } 100% { transform: scale(1) rotateY(0deg); opacity: 1; } }
+
+/* Spring entrances — first-mounts / modals / fanfares (used sparingly) */
+@keyframes slideUpSpring    { 0% { opacity: 0; transform: translateY(60px) scale(.94); } 65% { opacity: 1; transform: translateY(-6px) scale(1.01); } 82% { transform: translateY(3px) scale(.995); } 100% { opacity: 1; transform: translateY(0) scale(1); } }
+@keyframes scaleInSpring    { 0% { opacity: 0; transform: scale(0.5); } 60% { opacity: 1; transform: scale(1.08); } 80% { transform: scale(0.97); } 100% { opacity: 1; transform: scale(1); } }
+@keyframes flashInBig       { 0% { opacity: 0; transform: scale(.55) translateY(24px); } 50% { transform: scale(1.12) translateY(-6px); } 72% { transform: scale(.97) translateY(2px); } 100% { opacity: 1; transform: scale(1) translateY(0); } }
+@keyframes flashIn          { 0% { opacity: 0; transform: scale(.7) translateY(14px); } 55% { transform: scale(1.06) translateY(-3px); } 100% { opacity: 1; transform: scale(1) translateY(0); } }
+
+/* Hunt screen — proximity-driven ping + cursor breathe */
+@keyframes ping             { 0% { transform: translate(-50%,-50%) scale(.8); opacity: .85; } 100% { transform: translate(-50%,-50%) scale(3.6); opacity: 0; } }
+@keyframes pingRing         { 0% { transform: translate(-50%,-50%) scale(0.6); opacity: .9; } 100% { transform: translate(-50%,-50%) scale(4.2); opacity: 0; } }
+@keyframes breathe          { 0%,100% { opacity: .7; transform: translate(-50%,-50%) scale(1); } 50% { opacity: 1; transform: translate(-50%,-50%) scale(1.035); } }
+@keyframes scanline         { 0% { transform: translateX(-4%); } 100% { transform: translateX(104%); } }
+@keyframes pulseDot         { 0%,100% { transform: translate(-50%,-50%) scale(1);     box-shadow: 0 0 12px currentColor; } 50% { transform: translate(-50%,-50%) scale(1.15); box-shadow: 0 0 22px currentColor; } }
+@keyframes gleam            { 0% { transform: translateX(-60%); opacity: 0; } 10% { opacity: 1; } 60% { opacity: .9; } 100% { transform: translateX(140%); opacity: 0; } }
+
+/* Coin reveal banner */
+@keyframes rarityFlash      { 0%,100% { opacity: 1; } 50% { opacity: .35; } }
+@keyframes subtlePulse      { 0%,100% { opacity: 1; } 50% { opacity: .5; } }
+@keyframes coinEmerge       { 0% { filter: brightness(.25) saturate(0);   transform: scale(.88); } 60% { filter: brightness(.85) saturate(.6); transform: scale(1.04); } 100% { filter: brightness(1) saturate(1); transform: scale(1); } }
+/* coinFlyUp — used by HuntSideScroller after a successful dig.
+   Coin emerges from the hole, rises, spins, scales up toward camera. */
+@keyframes coinFlyUp        { 0% { transform: translate(-50%, 0) scale(.4) rotate(0deg); opacity: 0; } 15% { opacity: 1; } 100% { transform: translate(-50%, -260px) scale(2.2) rotate(720deg); opacity: 1; } }
+@keyframes rayExpand        { 0% { opacity: 0; transform: translate(-50%,-100%) scaleY(0); transform-origin: bottom center; } 30% { opacity: 1; } 100% { opacity: 0; transform: translate(-50%,-100%) scaleY(1); transform-origin: bottom center; } }
+
+/* Dig pit — feedback motion */
+@keyframes digPop           { 0% { transform: scale(1); } 40% { transform: scale(.84) translateY(5px); } 100% { transform: scale(1); } }
+@keyframes cellReveal       { 0% { opacity: 0; transform: scale(.5); } 65% { transform: scale(1.12); } 100% { opacity: 1; transform: scale(1); } }
+@keyframes cellImpact       { 0% { transform: scale(1); } 18% { transform: scale(.82) translateY(6px); } 50% { transform: scale(1.04) translateY(-2px); } 100% { transform: scale(1) translateY(0); } }
+@keyframes dirtPuff         { 0% { opacity: 1; transform: translate(-50%,-50%) scale(0) rotate(0deg); } 60% { opacity: .7; } 100% { opacity: 0; transform: translate(calc(-50% + var(--dx)), calc(-50% + var(--dy))) scale(1) rotate(var(--dr)); } }
+@keyframes shake            { 0%,100% { transform: translateX(0); } 20% { transform: translateX(-6px); } 60% { transform: translateX(6px); } }
+@keyframes shakeHard        { 0%,100% { transform: translate(0,0); } 15% { transform: translate(-8px,2px); } 30% { transform: translate(8px,-2px); } 50% { transform: translate(-5px,3px); } 70% { transform: translate(6px,-1px); } 85% { transform: translate(-3px,1px); } }
+@keyframes pickSwing        { 0% { transform: translate(-50%,-90%) rotate(-55deg) scale(.9); opacity: .95; } 45% { transform: translate(-50%,-90%) rotate(20deg) scale(1.18); opacity: 1; } 100% { transform: translate(-50%,-90%) rotate(0deg) scale(.7); opacity: 0; } }
+@keyframes pickSwingCell    { 0% { transform: rotate(-50deg) scale(.8); opacity: .9; } 45% { transform: rotate(15deg) scale(1.25); opacity: 1; } 100% { transform: rotate(0) scale(.6); opacity: 0; } }
+
+/* Roulette */
+@keyframes winPop           { 0% { transform: scale(0) rotate(-15deg); } 65% { transform: scale(1.18) rotate(4deg); } 100% { transform: scale(1) rotate(0); } }
+
+/* Shiny + premium-title flair */
+@keyframes shinyAuraGlow    { 0%,100% { box-shadow: 0 0 0 1.5px #f0c850, 0 0 14px 2px rgba(240,200,80,.45),  inset 0 0 10px rgba(240,200,80,.15); } 50% { box-shadow: 0 0 0 1.5px #ffd870, 0 0 22px 3px rgba(255,216,112,.65), inset 0 0 14px rgba(255,216,112,.22); } }
+@keyframes shinyText        { 0%,100% { color: #f0c850; text-shadow: 0 0 8px rgba(240,200,80,.4); } 50% { color: #ffd870; text-shadow: 0 0 14px rgba(240,200,80,.8); } }
+@keyframes shinyRotate      { from { transform: rotate(0); } to { transform: rotate(360deg); } }
+@keyframes titleShimmer     { 0%,100% { background-position: 0% 50%; } 50% { background-position: 100% 50%; } }
+@keyframes titleVoidPulse   { 0%,100% { text-shadow: 0 0 6px rgba(160,80,232,.6),  0 0 12px rgba(160,80,232,.3); } 50% { text-shadow: 0 0 10px rgba(200,120,255,.9), 0 0 20px rgba(160,80,232,.6), 0 0 28px rgba(120,40,200,.4); } }
+@keyframes titleAstralGlow  { 0%,100% { filter: hue-rotate(0deg) brightness(1); } 33% { filter: hue-rotate(15deg) brightness(1.15); } 66% { filter: hue-rotate(-10deg) brightness(1.05); } }
+
+/* Ambient particle drift — three offset variants for stagger */
+@keyframes ambientFloat1    { 0%,100% { transform: translate(0,0); opacity: 0; } 25% { opacity: .9; } 50% { transform: translate(10px,-12px); opacity: .5; } 75% { opacity: .9; } }
+@keyframes ambientFloat2    { 0%,100% { transform: translate(0,0); opacity: 0; } 30% { opacity: .7; } 50% { transform: translate(-8px,-10px); opacity: .4; } 70% { opacity: .7; } }
+@keyframes ambientFloat3    { 0%,100% { transform: translate(0,0); opacity: 0; } 35% { opacity: .85; } 50% { transform: translate(6px,-14px); opacity: .45; } 65% { opacity: .85; } }
+
+/* Scrap flyer — non-coin dig payouts arcing into the marks counter */
+@keyframes scrapFly         { 0% { transform: translate(0,0) scale(0.4) rotate(0deg); opacity: 0; } 10% { transform: translate(0,-22px) scale(1.5) rotate(40deg); opacity: 1; } 45% { transform: translate(calc(var(--dx)*.4), calc(var(--dy)*.3 - 30px)) scale(1.15) rotate(180deg); opacity: 1; } 100% { transform: translate(var(--dx), var(--dy)) scale(0.6) rotate(720deg); opacity: 0; } }
+@keyframes scrapText        { 0% { opacity: 0; transform: translate(-50%,0) scale(.7); } 15% { opacity: 1; transform: translate(-50%,-12px) scale(1.1); } 65% { opacity: 1; transform: translate(-50%,-30px) scale(1); } 100% { opacity: 0; transform: translate(-50%,-50px) scale(.85); } }
+@keyframes marksPulse       { 0%,100% { transform: scale(1); } 50% { transform: scale(1.18); text-shadow: 0 0 12px currentColor; } }
+@keyframes marksFlash       { 0% { color: inherit; } 20% { color: #ffe878; text-shadow: 0 0 10px rgba(255,232,120,.9); } 100% { color: inherit; text-shadow: none; } }
+
+/* Particles (lucky / shiny burst) */
+@keyframes particleFly      { 0% { opacity: 1; transform: translate(0,0) rotate(0deg) scale(1); } 100% { opacity: 0; transform: translate(var(--tx), var(--ty)) rotate(var(--r)) scale(.4); } }
+
+/* Lucky fanfare beats */
+@keyframes luckySlam        { 0% { opacity: 0; transform: translateY(-44px) scale(.55); } 50% { transform: translateY(5px) scale(1.1); } 70% { transform: translateY(-3px) scale(.96); } 100% { opacity: 1; transform: translateY(0) scale(1); } }
+@keyframes luckySlamBig     { 0% { opacity: 0; transform: translateY(-80px) scale(.35); } 45% { opacity: 1; transform: translateY(8px) scale(1.18); } 65% { transform: translateY(-4px) scale(.97); } 80% { transform: translateY(2px) scale(1.01); } 100% { opacity: 1; transform: translateY(0) scale(1); } }
+@keyframes luckyFlash       { 0% { opacity: 0; } 8% { opacity: .35; } 25% { opacity: 0; } 100% { opacity: 0; } }
+@keyframes luckySubtitle    { 0% { opacity: 0; transform: translateY(10px) scale(.9); } 60% { opacity: 1; transform: translateY(-2px) scale(1.02); } 100% { opacity: 1; transform: translateY(0) scale(1); } }
+@keyframes luckyRing        { 0% { transform: translate(-50%,-50%) scale(0); opacity: .8; } 100% { transform: translate(-50%,-50%) scale(3.5); opacity: 0; } }
+
+/* Bottom nav feedback */
+@keyframes flicker          { 0%,100% { opacity: 1; } 45% { opacity: .84; } 55% { opacity: 1; } }
+@keyframes navPop           { 0% { transform: scale(1); } 40% { transform: scale(1.28); } 70% { transform: scale(.92); } 100% { transform: scale(1); } }
+@keyframes navBarSlide      { from { transform: translateX(-50%) scaleX(.4); opacity: 0; } to { transform: translateX(-50%) scaleX(1); opacity: 1; } }
+
+
+/* ──────────────────────────────────────────────────────────────────────────
+ * UTILITY CLASSES — patterns that need real CSS (pseudo-elements, complex
+ * selectors, child-of-class) and don't fit cleanly into Tailwind atomics.
+ * ──────────────────────────────────────────────────────────────────────── */
+
+/* Shiny coin tile aura — the warm-gold pulse that frames a shiny in the vault */
+.shiny-card                 { position: relative; }
+.shiny-aura                 { position: absolute; inset: 0; border-radius: inherit; pointer-events: none; z-index: 0; animation: shinyAuraGlow 2.4s linear infinite; }
+.shiny-card > *:not(.shiny-aura) { position: relative; z-index: 1; }
+
+/* Premium title flairs — cosmetic title text effects */
+.title-shimmer { background: linear-gradient(90deg,#d4a017 0%,#fff8a0 50%,#d4a017 100%); background-size: 200% 100%; -webkit-background-clip: text; background-clip: text; color: transparent; animation: titleShimmer 3s ease-in-out infinite; font-weight: 800; }
+.title-void    { color: #c890ff; animation: titleVoidPulse 2.4s ease-in-out infinite; font-weight: 800; }
+.title-astral  { background: linear-gradient(90deg,#fff8a0,#ffd060,#a8d8ff,#c890ff,#fff8a0); background-size: 300% 100%; -webkit-background-clip: text; background-clip: text; color: transparent; animation: titleShimmer 4s linear infinite, titleAstralGlow 5s ease-in-out infinite; font-weight: 800; }
+
+/* Ambient particle layer — three children animated independently */
+.ambient-particles                       { position: absolute; inset: 0; pointer-events: none; overflow: visible; z-index: 2; }
+.ambient-particles > span                { position: absolute; width: 3px; height: 3px; border-radius: 50%; display: block; }
+.ambient-particles.eldritch > span       { background: #80ffb0; box-shadow: 0 0 6px #80ffb0, 0 0 10px #5af090aa; }
+.ambient-particles.astral    > span      { background: #fff8a0; box-shadow: 0 0 6px #fff8a0, 0 0 12px #ffd060aa; width: 2.5px; height: 2.5px; }
+.ambient-particles > span:nth-child(1)   { left: 18%; top: 75%; animation: ambientFloat1 4s   ease-in-out infinite; }
+.ambient-particles > span:nth-child(2)   { left: 78%; top: 65%; animation: ambientFloat2 5s   ease-in-out infinite .8s; }
+.ambient-particles > span:nth-child(3)   { left: 50%; top: 82%; animation: ambientFloat3 4.5s ease-in-out infinite 1.6s; }
+
+/* Card hover lift — coin tiles, tarot cards */
+.coin-card        { transition: transform .18s cubic-bezier(.34,1.56,.64,1), box-shadow .18s, border-color .18s; }
+.coin-card:hover  { transform: translateY(-4px) scale(1.02); }
+.coin-card:active { transform: translateY(0) scale(.97); }
+
+/* Bottom nav button feedback */
+.nav-btn          { transition: transform .15s cubic-bezier(.34,1.56,.64,1), color .15s; }
+.nav-btn:active   { transform: scale(.88) !important; }
+.nav-icon         { transition: transform .2s cubic-bezier(.34,1.56,.64,1); }
+
+/* Texture overlays */
+.noise-overlay    { position: absolute; inset: 0; pointer-events: none; background-image: url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='200' height='200'><filter id='n'><feTurbulence type='fractalNoise' baseFrequency='.85' numOctaves='2'/></filter><rect width='100%25' height='100%25' filter='url(%23n)' opacity='.5'/></svg>"); mix-blend-mode: overlay; }
+
+/* Animated tab indicator (bottom nav) */
+.tab-active-indicator { position: absolute; top: 0; left: 50%; transform: translateX(-50%); width: 24px; height: 2.5px; border-radius: 0 0 3px 3px; background: currentColor; box-shadow: 0 0 10px currentColor, 0 0 20px currentColor; animation: navBarSlide .25s cubic-bezier(.34,1.56,.64,1) forwards; }
