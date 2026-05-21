@@ -15,7 +15,8 @@ import { useState, useEffect, useMemo, useCallback } from "react";
    ──────────────────────────────────────────────────────────────────────── */
 
 import { DARK, LIGHT } from "./lib/theme.js";
-import { lvl, lvlMin, lvlMax, mkCoin } from "./lib/coin.js";
+import { lvl, lvlMin, lvlMax, mkCoin, coinValue } from "./lib/coin.js";
+import { METALS, RARITIES, RARITY_COLOR } from "./lib/data.js";
 import { apiClient, TOKEN_KEY } from "./lib/api.js";
 import { useDebouncedEffect } from "./hooks/index.js";
 import { GameContext } from "./lib/GameContext.js";
@@ -23,6 +24,8 @@ import { GameContext } from "./lib/GameContext.js";
 import AuthScreen   from "./components/AuthScreen.jsx";
 import MarksCounter from "./components/MarksCounter.jsx";
 import IdleField    from "./screens/IdleField.jsx";
+import Profile      from "./screens/Profile.jsx";
+import Vault        from "./screens/Vault.jsx";
 
 export default function MintForge(){
   /* ── auth ───────────────────────────────────────────────────────── */
@@ -57,6 +60,27 @@ export default function MintForge(){
       return next;
     });
   }, []);
+
+  /* commitCoin — drops a freshly-mined coin into the vault and persists it.
+   * Called from IdleField when a station's cycle completes. Awards XP based
+   * on coin value too so the level bar advances naturally with play. */
+  const commitCoin = useCallback((coin, source = "field") => {
+    setCoins(prev => [coin, ...prev]);
+    const xpGain = Math.max(10, Math.round(coinValue(coin) * 0.5));
+    setXP(p => p + xpGain);
+    // Persist coin to vault. State (xp/marks/fieldState) gets persisted by
+    // the debounced effect below, so we only need to add the coin row here.
+    api.tx({
+      add: [{
+        id:       coin.id,
+        seed:     coin.seed,
+        metalIdx: coin.metalIdx,
+        rarity:   coin.rarity || 0,
+        shiny:    !!coin.shiny,
+        source,
+      }],
+    }).catch(() => {});
+  }, [api]);
 
   /* ── routing ────────────────────────────────────────────────────── */
   const [tab, setTab]         = useState("field");
@@ -168,11 +192,14 @@ export default function MintForge(){
     marks, setMarks,
     fieldState, setFieldState,
     oreCounts, setOreCounts, addOre,
+    commitCoin,
     // routing
     tab, setTab,
     menuOpen, setMenuOpen,
     // derived
     level, xpPct, xpIn, xpRange,
+    // data tables (used by screens)
+    METALS, RARITIES, RARITY_COLOR,
   };
 
   /* ── layout ────────────────────────────────────────────────────── */
@@ -221,8 +248,8 @@ export default function MintForge(){
       {/* ═══ CONTENT ═══ */}
       <div style={{position:"relative", height:"calc(100vh - 56px)", overflow:"hidden"}}>
         {tab === "field"   && <IdleField/>}
-        {tab === "vault"   && <Placeholder t={t} F={F} FR={FR} title="Vault" body="Your coin collection lives here. Coming soon."/>}
-        {tab === "profile" && <Placeholder t={t} F={F} FR={FR} title="Profile" body="Username, banner, stats. Coming soon."/>}
+        {tab === "vault"   && <Vault/>}
+        {tab === "profile" && <Profile/>}
         {tab === "social"  && <Placeholder t={t} F={F} FR={FR} title="Social" body="Friends and visiting other villages. Coming soon."/>}
       </div>
 

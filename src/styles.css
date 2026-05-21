@@ -147,3 +147,32 @@ button  { -webkit-tap-highlight-color: transparent; }
 
 /* Animated tab indicator (bottom nav) */
 .tab-active-indicator { position: absolute; top: 0; left: 50%; transform: translateX(-50%); width: 24px; height: 2.5px; border-radius: 0 0 3px 3px; background: currentColor; box-shadow: 0 0 10px currentColor, 0 0 20px currentColor; animation: navBarSlide .25s cubic-bezier(.34,1.56,.64,1) forwards; }
+
+/* ─── Catforge animations ─────────────────────────────────────────── */
+
+/* Drawer slide-in from the left for the hamburger menu */
+@keyframes slideRight {
+  from { transform: translateX(-100%); opacity: 0; }
+  to   { transform: translateX(0);     opacity: 1; }
+}
+
+/* Generic fade-in used by modals and overlays */
+@keyframes fadein {
+  from { opacity: 0; }
+  to   { opacity: 1; }
+}
+
+/* Station "ready" pulse ring — gently scales + fades around the dirt island
+   when a station is ready to claim, drawing the eye without flicker. */
+@keyframes stationPulse {
+  0%, 100% { transform: translateX(-50%) scale(1);    opacity: 0.7; }
+  50%      { transform: translateX(-50%) scale(1.12); opacity: 0.25; }
+}
+
+/* Coin pop — when a station's coin is claimed, it floats up and fades. */
+@keyframes coinPop {
+  0%   { transform: translateX(-50%) translateY(20px) scale(0.5); opacity: 0; }
+  20%  { transform: translateX(-50%) translateY(0)    scale(1.1); opacity: 1; }
+  80%  { transform: translateX(-50%) translateY(-30px) scale(1);  opacity: 1; }
+  100% { transform: translateX(-50%) translateY(-50px) scale(0.85); opacity: 0; }
+}
