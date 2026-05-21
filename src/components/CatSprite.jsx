@@ -29,6 +29,12 @@ const FRAME_SETS = {
     "/sprites/cat_idle_2.png",
     "/sprites/cat_idle_3.png",
   ],
+  // Loaf pose, head up + ears visible — frames 33, 34 from row 3. Two frames
+  // alternated slowly = breathing sleeping cat. The default outdoor pose.
+  sleep: [
+    "/sprites/cat_sleep_0.png",
+    "/sprites/cat_sleep_1.png",
+  ],
   walk_up: [
     "/sprites/cat_walk_up_0.png", "/sprites/cat_walk_up_1.png",
     "/sprites/cat_walk_up_2.png", "/sprites/cat_walk_up_3.png",
@@ -49,6 +55,7 @@ FRAME_SETS.walk_left = FRAME_SETS.walk_right;
 
 const DEFAULT_FPS = {
   idle: 1.5,       // slow breathing
+  sleep: 0.8,      // very slow — cats sleep peacefully
   walk_up: 6,      // brisk walk
   walk_down: 6,
   walk_right: 8,

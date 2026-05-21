@@ -61,19 +61,22 @@ const DEFAULT_STATIONS = [
 
 // Decoration scattered using BOTTOM-relative positioning so canopies extend
 // upward into the visible area and never get cropped at the viewport top.
+// X values kept between 10-90 so trees don't hit the side edges on narrow
+// screens. Bottom values kept moderate (15-50) so canopies stay inside the
+// field even on short viewports.
 function defaultDecor() {
   return [
-    // upper edge — trees with canopies near the top of the field
-    { art: "/sprites/tree_a.png", x: 8,  bottom: 62, w: 72 },
-    { art: "/sprites/tree_b.png", x: 92, bottom: 60, w: 80 },
-    // lower edge — trees flanking the bottom
-    { art: "/sprites/tree_a.png", x: 4,  bottom: 12, w: 70 },
-    { art: "/sprites/tree_b.png", x: 96, bottom: 10, w: 84 },
-    // bushes — shorter, less risk of cropping; scatter freely
-    { art: "/sprites/bush_a.png", x: 16, bottom: 30, w: 42 },
-    { art: "/sprites/bush_b.png", x: 86, bottom: 32, w: 48 },
-    { art: "/sprites/bush_a.png", x: 58, bottom: 12, w: 38 },
-    { art: "/sprites/bush_b.png", x: 36, bottom: 8,  w: 44 },
+    // Mid-height trees flanking the upper area
+    { art: "/sprites/tree_a.png", x: 12, bottom: 50, w: 70 },
+    { art: "/sprites/tree_b.png", x: 88, bottom: 48, w: 78 },
+    // Lower trees flanking the bottom
+    { art: "/sprites/tree_a.png", x: 10, bottom: 16, w: 68 },
+    { art: "/sprites/tree_b.png", x: 90, bottom: 14, w: 80 },
+    // Bushes — short, scattered freely
+    { art: "/sprites/bush_a.png", x: 22, bottom: 30, w: 38 },
+    { art: "/sprites/bush_b.png", x: 80, bottom: 32, w: 44 },
+    { art: "/sprites/bush_a.png", x: 60, bottom: 14, w: 34 },
+    { art: "/sprites/bush_b.png", x: 38, bottom: 10, w: 40 },
   ];
 }
 
@@ -82,19 +85,41 @@ export default function IdleField() {
   const playerLevel = lvl(xp);
 
   // ─── Initialise stations + decor once ──────────────────────────
-  const stations = fieldState?.stations || DEFAULT_STATIONS.map(s => ({
-    ...s, level: 1, nextReadyAt: Date.now() + CYCLE_MS,
-  }));
+  // Stations live in fieldState so timers persist across reloads. We hydrate
+  // defaults on first load AND when the persisted shape is stale (e.g.
+  // saved stations point to sprite paths we've since renamed/deleted, like
+  // an older build's "/sprites/rocks_pile.png"). The migration check below
+  // is conservative — any station whose art doesn't start with "/sprites/bld_"
+  // is treated as old-shape and the whole stations array is rebuilt while
+  // preserving timers where possible.
+  const persistedStations = fieldState?.stations;
+  const stationsAreStale = !persistedStations
+    || !Array.isArray(persistedStations)
+    || persistedStations.length !== DEFAULT_STATIONS.length
+    || persistedStations.some(s => !s?.art?.startsWith("/sprites/bld_"));
+
+  const stations = stationsAreStale
+    ? DEFAULT_STATIONS.map((s, i) => ({
+        ...s,
+        level: persistedStations?.[i]?.level || 1,
+        nextReadyAt: persistedStations?.[i]?.nextReadyAt || (Date.now() + CYCLE_MS),
+      }))
+    : persistedStations;
+
   const decor = useMemo(() => fieldState?.decor || defaultDecor(), [fieldState?.decor]);
 
   useEffect(() => {
-    if (!fieldState?.stations) {
+    // Always persist the canonical stations on mount if the saved shape was
+    // stale or missing. This writes the migrated array back to fieldState.
+    if (stationsAreStale) {
       setFieldState(prev => ({
         ...prev,
-        stations: DEFAULT_STATIONS.map(s => ({
-          ...s, level: 1, nextReadyAt: Date.now() + CYCLE_MS,
+        stations: DEFAULT_STATIONS.map((s, i) => ({
+          ...s,
+          level: prev?.stations?.[i]?.level || 1,
+          nextReadyAt: prev?.stations?.[i]?.nextReadyAt || (Date.now() + CYCLE_MS),
         })),
-        decor: defaultDecor(),
+        decor: prev?.decor || defaultDecor(),
       }));
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -230,7 +255,7 @@ export default function IdleField() {
 function Station({ station, ready, progress, presentingCoin, onClaim }) {
   const [hover, setHover] = useState(false);
 
-  const catMood = ready ? "idle" : "walk_up";
+  const catMood = ready ? "idle" : "sleep";
   const catFlip = station.catSide === "right";
 
   return (
@@ -262,22 +287,14 @@ function Station({ station, ready, progress, presentingCoin, onClaim }) {
         }}/>
       )}
 
-      {/* Building sprite — anchored to centre-bottom */}
-      <img
+      {/* Building sprite — anchored to centre-bottom. Falls back to a
+          stylised placeholder if the image fails to load (Cloudflare cache
+          quirk or asset still propagating). */}
+      <BuildingImg
         src={station.art}
         alt={station.name}
-        style={{
-          position: "absolute",
-          left: "50%", bottom: 30,
-          transform: "translateX(-50%)",
-          width: station.artW, height: "auto",
-          imageRendering: "pixelated",
-          filter: ready
-            ? `drop-shadow(0 4px 2px ${P.shadow})`
-            : `drop-shadow(0 4px 2px ${P.shadow}) saturate(.9) brightness(.96)`,
-          transition: "filter .3s",
-          pointerEvents: "none",
-        }}
+        width={station.artW}
+        ready={ready}
       />
 
       {/* Cat — sits beside the building. catSide controls which side. */}
@@ -347,5 +364,56 @@ function Station({ station, ready, progress, presentingCoin, onClaim }) {
         </div>
       )}
     </div>
+  );
+}
+
+/* ─── BUILDING IMAGE ─────────────────────────────────────────────────────
+ * Wrapper around the building <img> that falls back to a styled placeholder
+ * box if the PNG fails to load. This protects the layout in two cases:
+ *  (1) a fresh deploy where Cloudflare CDN hasn't propagated the new asset
+ *  (2) a path mismatch, typo, or any other 404 — better a clean box than
+ *      a broken-image icon and shifted layout. */
+function BuildingImg({ src, alt, width, ready }) {
+  const [failed, setFailed] = useState(false);
+
+  if (failed) {
+    return (
+      <div style={{
+        position: "absolute", left: "50%", bottom: 30,
+        transform: "translateX(-50%)",
+        width, height: width * 0.85,
+        background: "linear-gradient(160deg, #c5a878, #8b6a3a)",
+        border: `3px solid ${P.bannerEdge}`,
+        borderRadius: 8,
+        display: "flex", alignItems: "center", justifyContent: "center",
+        boxShadow: `0 4px 0 ${P.shadow}`,
+        color: P.banner,
+        fontFamily: "'Fraunces',serif", fontWeight: 800,
+        fontSize: 14, textAlign: "center",
+        padding: 6,
+      }}>
+        {alt}
+      </div>
+    );
+  }
+
+  return (
+    <img
+      src={src}
+      alt={alt}
+      onError={() => setFailed(true)}
+      style={{
+        position: "absolute",
+        left: "50%", bottom: 30,
+        transform: "translateX(-50%)",
+        width, height: "auto",
+        imageRendering: "pixelated",
+        filter: ready
+          ? `drop-shadow(0 4px 2px ${P.shadow})`
+          : `drop-shadow(0 4px 2px ${P.shadow}) saturate(.9) brightness(.96)`,
+        transition: "filter .3s",
+        pointerEvents: "none",
+      }}
+    />
   );
 }
