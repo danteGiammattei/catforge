@@ -1,157 +1,122 @@
-# MintForge
+# Catforge
 
-Hunt, forge, and gamble ancient coins from lost civilisations.
-Runs on Cloudflare Pages + D1.
+Comfy idle coin-mining game. Tap the mine, send the cat in, get a coin back. Forked from MintForge to start clean on the schema and UI.
 
-## Architecture
+## What you get out of this fork
 
-- **Frontend** — Vite + React, built into `dist/`
-- **API** — Cloudflare Pages Functions (`functions/api/...`)
-- **Storage** — D1 (SQLite), bound as `DB`
-- **Auth** — username + 4-6 digit PIN, PBKDF2-hashed, session tokens in `localStorage`
+- **Procedural coin renderer** — fully preserved from MintForge (`src/lib/coin.js` + `src/components/CoinCanvas.jsx`). 9 metals × 5 rarities, deterministic from seed.
+- **IdleField main screen** — pastel green field with mine + cat, click-to-mine loop, recent coins tray, hamburger menu (Cats-and-Soup vibe).
+- **Auth + session + vault + profile + social** — kept from MintForge so login/friends/coin storage just works.
+- **Clean schema** — single new `001_init.sql` migration with just the tables this game needs. No skeleton-hunt / forge / tarot baggage.
 
-All API routes are same-origin; no separate Worker.
+## Setup (do these in order)
 
-## Local dev
+### 1. Run SETUP.cmd
 
-```bash
-npm install
-npm run dev           # Vite only — API returns 404 locally
+Double-click `SETUP.cmd` from anywhere. It will:
+
+1. Copy `C:\dev\codebase\cloudflare\coin_game\mintforge-deploy` → `C:\dev\codebase\cloudflare\new\catforge`
+2. Disconnect old git history
+3. Delete the baggage (old screens, sprites, decor, old migrations)
+4. Pause for you to copy the replacement files (next step)
+
+If your source path is different, edit `SOURCE=` at the top of `SETUP.cmd` first.
+
+### 2. Copy the replacement files
+
+Once the script pauses, copy the contents of the `replace/` folder over your new `catforge` directory — preserve the folder structure. You can do this in Explorer or run:
+
+```cmd
+xcopy /E /Y replace\* C:\dev\codebase\cloudflare\new\catforge\
 ```
 
-For full-stack local after D1 is set up:
-```bash
-npx wrangler pages dev -- npm run dev
-```
+Files being replaced:
+- `package.json` — renamed to "catforge"
+- `index.html` — title and meta updated
+- `src/MintForge.jsx` — stripped of imports/routes for deleted screens (Tavern, Forge, etc.)
+- `src/screens/IdleField.jsx` — the new main screen
+- `src/lib/data.js` — unchanged (METALS palette etc. still needed)
+- `src/lib/coin.js` — unchanged (procedural renderer)
+- `migrations/001_init.sql` — fresh clean schema
+- `README.md` — this file
 
-## Deploy walkthrough
+### 3. Resume SETUP.cmd (press any key)
 
-### 1. Create the D1 database
+The script will then run `npm install`, init git, and make the initial commit.
 
-```bash
-npx wrangler d1 create mintforge
-```
+### 4. Push to a new GitHub repo
 
-Copy the printed `database_id` into `wrangler.toml` under `[[d1_databases]]`.
+Create an empty repo at https://github.com/new (suggested name: `catforge`).
 
-### 2. Apply the schema
-
-```bash
-npx wrangler d1 execute mintforge --file=./schema.sql --remote
-```
-
-Verify:
-```bash
-npx wrangler d1 execute mintforge --command="SELECT name FROM sqlite_master WHERE type='table'" --remote
-```
-Expect: `players`, `player_state`, `coins`, `sessions`.
-
-### 3. Push to GitHub
-
-```bash
-git init
-git add .
-git commit -m "Initial MintForge deploy"
-git remote add origin <your-repo-url>
+```cmd
+cd C:\dev\codebase\cloudflare\new\catforge
+git remote add origin https://github.com/YOUR_USERNAME/catforge.git
 git push -u origin main
 ```
 
-### 4. Connect to Cloudflare Pages
+### 5. Cloudflare Pages — new project
 
-Dashboard → Workers & Pages → Create → Pages → Connect to Git → pick repo.
+In the Cloudflare dashboard:
+1. Pages → Create a project → Connect to Git → pick `catforge`
+2. Framework preset: **Vite**
+3. Build command: `npm run build`
+4. Output directory: `dist`
+5. Save and deploy — you'll get a `*.pages.dev` URL
 
-Build settings:
-- Framework preset: **Vite**
-- Build command: `npm run build`
-- Build output directory: `dist`
-- Env var: `NODE_VERSION` = `20`
+### 6. Create a new D1 database
 
-### 5. Bind D1 to the Pages project
+```cmd
+npx wrangler d1 create catforge-db
+```
 
-After first deploy: Pages project → **Settings** → **Functions** → **D1 database bindings** → Add:
+Note the `database_id` it prints — you'll need it.
+
+### 7. Bind D1 to your Pages project
+
+Cloudflare dashboard → Pages → catforge → Settings → Functions → D1 database bindings → Add binding:
 - Variable name: `DB`
-- D1 database: `mintforge`
+- Database: `catforge-db`
 
-Then **Retry deployment**. API endpoints only work after binding is attached.
+### 8. Apply the schema
 
-### 6. Smoke test
-
-```bash
-curl -X POST https://<your-pages-url>/api/auth/register \
-  -H "Content-Type: application/json" \
-  -d '{"username":"test","pin":"1234"}'
+```cmd
+cd C:\dev\codebase\cloudflare\new\catforge
+npx wrangler d1 execute catforge-db --file=migrations/001_init.sql --remote
 ```
 
-Expect: `{ "token": "...", "player": { ... } }`.
+### 9. Redeploy
 
-### 7. Custom domain (optional)
+In the Pages dashboard, trigger a new deployment (or push any commit). The site at your `*.pages.dev` URL should now serve a working catforge build with:
+- Login/register screen
+- After login: the comfy idle field
+- Hamburger menu top-left → Vault/Profile/Social
 
-Pages project → Custom domains → `mintforge.projectthoth.com` (auto-DNS if zone is already on your CF account).
+## What's still rough (things to fix in the new chat)
 
-## Schema reference
+- **The hamburger menu doesn't navigate yet** — clicking Vault/Profile/Social just closes the drawer. Needs to call `setTab()` from context.
+- **No persistence for field state** — `field_state` column exists in D1 but the IdleField component doesn't save buildings/cats yet (it's a demo of the loop, not a saved game).
+- **No idle/offline progress** — building doesn't tick by itself; you have to tap each cycle.
+- **Single building, single cat** — the "Expand your village" hint is purely visual. Building catalog + slot system come next.
+- **Bottom tab nav still exists** — you may want to hide it entirely once the hamburger is wired up.
+- **Unused components are still in the codebase** — e.g. some lib files reference things from the old game. Safe to delete iteratively as you find them via build errors.
 
-See `schema.sql`. Four tables:
-- **players** — account credentials (PBKDF2 + salt, 10k iterations)
-- **player_state** — xp, shovel_level, brush_level, frame, bio, selected_title, pinned_ids (JSON)
-- **coins** — id, seed, metal_idx, shiny, acquired_at (rest derives from seed via `mkCoin(seed)`)
-- **sessions** — token → player_id
+## Tunables in IdleField
 
-## API surface
+At the top of `src/screens/IdleField.jsx`:
 
-| Method | Path                 | Auth | Purpose                                  |
-|--------|----------------------|------|------------------------------------------|
-| POST   | `/api/auth/register` | —    | Create account + session                 |
-| POST   | `/api/auth/login`    | —    | Authenticate + session                   |
-| POST   | `/api/auth/logout`   | ✓    | Revoke session                           |
-| GET    | `/api/vault`         | ✓    | Full player state + coin list            |
-| POST   | `/api/vault`         | ✓    | Transactional `{remove?, add?, state?}`  |
-
-All coin mutations flow through the single transactional endpoint — forges and gambles stay atomic.
-
-## Migrations (existing deployments)
-
-Run these in order. Each is idempotent — `CREATE TABLE IF NOT EXISTS` skips if applied; `ALTER TABLE ADD COLUMN` errors with "duplicate column name" if already applied (safe to ignore).
-
-```bash
-# v1 -> v2: Locked coins + friends
-npx wrangler d1 execute mintforge --file=./migrations/001_locked_friends.sql --remote
-
-# v2 -> v3: Marks currency, pickaxe durability, tarot cards
-npx wrangler d1 execute mintforge --file=./migrations/002_marks_durability_tarot.sql --remote
-
-# v3 -> v4: Premium frame + title ownership
-npx wrangler d1 execute mintforge --file=./migrations/003_owned_cosmetics.sql --remote
-
-# v4 -> v5: Coin rarity column
-npx wrangler d1 execute mintforge --file=./migrations/004_coin_rarity.sql --remote
-
-# v5 -> v6: Artefacts table (Shrine system)
-npx wrangler d1 execute mintforge --file=./migrations/005_artefacts.sql --remote
+```js
+const T_WALK_IN_MS  = 1200;   // cat → mine
+const T_MINING_MS   = 1600;   // shake-shake-shake
+const T_WALK_OUT_MS = 1200;   // mine → cat
+const T_PRESENT_MS  = 1400;   // coin floats
 ```
 
-If you can't run wrangler (e.g. on mobile), the equivalent SQL to paste into the Cloudflare D1 web console is in each migration file.
+Total cycle ~5.4s. Faster = more arcade-y, slower = more idle-y.
 
-## API surface (current)
+## Coin drop weighting
 
-| Method | Path                       | Auth | Purpose                                         |
-|--------|----------------------------|------|-------------------------------------------------|
-| POST   | `/api/auth/register`       | —    | Create account + session                        |
-| POST   | `/api/auth/login`          | —    | Authenticate + session                          |
-| POST   | `/api/auth/logout`         | ✓    | Revoke session                                  |
-| GET    | `/api/vault`               | ✓    | Full player state + coins + tarots + artefacts  |
-| POST   | `/api/vault`               | ✓    | Transactional `{remove?, add?, lock?, tarotBuy?, tarotSell?, artefactAdd?, state?}` |
-| GET    | `/api/users/search?q=`     | ✓    | Username prefix search (max 10)                 |
-| GET    | `/api/users/:username`     | ✓    | Public profile + showcase coins                 |
-| GET    | `/api/friends`             | ✓    | List your friends                               |
-| POST   | `/api/friends`             | ✓    | `{username}` — add friend                       |
-| DELETE | `/api/friends`             | ✓    | `{username}` — remove friend                    |
+Currently rolls a random metal via `rollOreMetal(Math.random())` from data.js. To make different buildings drop different metals (copper mine, silver mine, etc.), you'd add a per-building metal weight table when you build the building catalog.
 
-## Game systems
+## Have fun
 
-- **Coins** — the collectables. Found via Hunt, identity derived from a 32-bit seed (so DB rows stay tiny — `{id, seed, metalIdx, shiny, locked}`). All visual properties are reconstructed client-side via `mkCoin(seed)`.
-- **Marks (◈)** — the spendable currency. Earned at ~30% of a coin's value on discovery, or by selling coins from the inspect modal. Spent on tarot cards and pickaxe repairs.
-- **Pickaxe durability** — each dig costs 1 durability (Hierophant tarot halves it). Broken pickaxes refuse to dig until repaired in the Tavern. Repair cost scales with shovel level.
-- **Tarot cards** — purchased once each from the Tavern shop, equip up to 5 simultaneously for stacking buffs (shiny chance, XP multiplier, marks multiplier, tier-up rolls, durability reduction, pin slots, lucky-dig chance, forge refund).
-- **Brush** — capped at 15% shiny chance at max level (was 35%) to leave room for tarot stacking. Tarot bonuses apply on top of the brush rate.
-
-
+This is a clean canvas. The procedural coin renderer is the strongest piece of inherited code — every visual reward in the game flows through it. Build outward from "what makes earning a coin feel good" and the rest follows.
