@@ -1,40 +1,69 @@
 import { useEffect, useState } from "react";
 
 /* ─── CAT SPRITE ──────────────────────────────────────────────────────────
- * Renders an animated cat by cycling through individual frame PNGs. We
- * dropped the spritesheet-via-background-image approach because the cells
- * in the source sheet have per-frame offsets (the cat sits in a different
- * corner of each 16x16 cell), so a fixed cell-display would show "only
- * the head". The pre-aligned PNGs in /sprites/cat_idle_*.png have each
- * cat centered horizontally and anchored to the bottom of a 16x16 canvas,
- * so the display is stable across frames.
+ * Renders an animated cat by cycling individual frame PNGs. The source
+ * sprite sheet (cat_1.png from the Free Pack) lays out 32x32 cells, NOT
+ * 16x16 as we first assumed — each cell contains a small cat positioned
+ * variably for animation offset purposes. Frames have been pre-aligned
+ * to a consistent center-bottom anchor in 32x32 canvases under
+ * /sprites/cat_*.png so display is stable across the cycle.
+ *
+ * Animation frame mapping (from cat_1.png + Frame_indexes.png):
+ *   Row 0 (frames 0-5)  →  REST: cat sitting facing camera
+ *   Row 5 (frames 55-58) →  WALK UP: cat walking away from camera
+ *   Row 4 (frames 44-47) →  WALK DOWN: cat walking toward camera
+ *   Row 6 (frames 66-73) →  WALK RIGHT: cat profile, walking right
+ *   (Walk LEFT is just WALK RIGHT with flip=true — saves duplicating frames)
  *
  * Props:
- *  - mood: "idle" | "working"  picks the frame set.
- *  - size: display size in CSS pixels (16x16 → size×size, pixel-perfect).
- *  - flip: mirror horizontally.
- *  - fps:  animation rate. Default 1.5 — a slow breath, not a jitter.
+ *   mood: "idle" | "walk_up" | "walk_down" | "walk_right" | "walk_left"
+ *   size: display size in CSS pixels (sprite is 32x32, scaled pixel-perfect)
+ *   fps:  override animation rate
  * ────────────────────────────────────────────────────────────────────── */
 
 const FRAME_SETS = {
-  // 4 subtly-different sitting poses. Cycled slowly this reads as breathing
-  // + occasional head-look.
-  idle:    ["/sprites/cat_idle_0.png", "/sprites/cat_idle_1.png",
-            "/sprites/cat_idle_2.png", "/sprites/cat_idle_3.png"],
-  // No dedicated "working" pose available yet from the asset pack. Use the
-  // idle frames but at a slightly faster rate, conveying "actively going
-  // about its business" without changing pose.
-  working: ["/sprites/cat_idle_0.png", "/sprites/cat_idle_2.png",
-            "/sprites/cat_idle_1.png", "/sprites/cat_idle_3.png"],
+  // 3 calm sitting frames — frames 0, 2, 3 from row 0. Frame 1 is the cat
+  // standing (different pose) so we skip it for a smooth breathing loop.
+  idle: [
+    "/sprites/cat_idle_0.png",
+    "/sprites/cat_idle_2.png",
+    "/sprites/cat_idle_3.png",
+  ],
+  walk_up: [
+    "/sprites/cat_walk_up_0.png", "/sprites/cat_walk_up_1.png",
+    "/sprites/cat_walk_up_2.png", "/sprites/cat_walk_up_3.png",
+  ],
+  walk_down: [
+    "/sprites/cat_walk_down_0.png", "/sprites/cat_walk_down_1.png",
+    "/sprites/cat_walk_down_2.png", "/sprites/cat_walk_down_3.png",
+  ],
+  walk_right: [
+    "/sprites/cat_walk_right_0.png", "/sprites/cat_walk_right_1.png",
+    "/sprites/cat_walk_right_2.png", "/sprites/cat_walk_right_3.png",
+    "/sprites/cat_walk_right_4.png", "/sprites/cat_walk_right_5.png",
+    "/sprites/cat_walk_right_6.png", "/sprites/cat_walk_right_7.png",
+  ],
+};
+// walk_left reuses walk_right frames with horizontal flip.
+FRAME_SETS.walk_left = FRAME_SETS.walk_right;
+
+const DEFAULT_FPS = {
+  idle: 1.5,       // slow breathing
+  walk_up: 6,      // brisk walk
+  walk_down: 6,
+  walk_right: 8,
+  walk_left: 8,
 };
 
-export default function CatSprite({ mood = "idle", size = 48, flip = false, fps }) {
+export default function CatSprite({ mood = "idle", size = 64, flip, fps }) {
   const frames = FRAME_SETS[mood] || FRAME_SETS.idle;
-  const defaultFps = mood === "working" ? 3 : 1.5;
-  const rate = fps ?? defaultFps;
+  const rate = fps ?? (DEFAULT_FPS[mood] || 2);
+  // walk_left is walk_right mirrored — auto-flip unless caller overrides.
+  const shouldFlip = flip ?? (mood === "walk_left");
   const [idx, setIdx] = useState(0);
 
   useEffect(() => {
+    setIdx(0);
     if (frames.length <= 1) return;
     const id = setInterval(() => setIdx(i => (i + 1) % frames.length), 1000 / rate);
     return () => clearInterval(id);
@@ -50,7 +79,7 @@ export default function CatSprite({ mood = "idle", size = 48, flip = false, fps 
       style={{
         imageRendering: "pixelated",
         display: "block",
-        transform: flip ? "scaleX(-1)" : "none",
+        transform: shouldFlip ? "scaleX(-1)" : "none",
         pointerEvents: "none",
       }}
     />

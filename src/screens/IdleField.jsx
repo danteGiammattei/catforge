@@ -6,72 +6,74 @@ import CoinCanvas from "../components/CoinCanvas.jsx";
 import CatSprite from "../components/CatSprite.jsx";
 
 /* ─── IDLE FIELD ───────────────────────────────────────────────────────────
- * Fully pixel-art cosy village. Tiled grass background, stone pad under
- * each station, real sprite fixtures (rock pile / barn / crate), cats
- * sitting next to them, scattered tree decoration around the edges.
+ * Pixel-art village with proper isometric buildings, animated cats, and
+ * bottom-anchored decoration that doesn't get cropped at the viewport top.
  *
- * Stations operate on a wall-clock timer stored in fieldState — every
- * station has a `nextReadyAt` timestamp. While `Date.now() < nextReadyAt`
- * the station is "working" and shows a progress bar. Once ready, an
- * accent pulse appears and the player taps to claim — a coin is minted,
- * persisted via commitCoin(), and the timer resets. Idle progress works
- * even when the tab is closed because the timer is just a timestamp.
+ * Station behaviour:
+ *  - WORKING (cycle in progress): cat plays walk_up — visually it's
+ *    "wandering up to the building to do work", slow shuffle.
+ *  - READY (cycle complete): cat sits at the front of the station, facing
+ *    the camera. Tap the station to claim.
  *
- * Pixel-art rules:
- *  - All <img> sprites carry image-rendering: pixelated so they don't
- *    bilinear-smooth when scaled up.
- *  - Tiles render at 2x native resolution (32px tile → 64px display)
- *    so individual pixels are visible without dominating the layout.
- *  - Decorative elements use absolute % positioning so the layout flexes
- *    across phone widths without breaking.
+ * Layout uses BOTTOM-relative positioning for trees/bushes so the sprite's
+ * trunk anchors to a fixed offset from the bottom of the viewport — no
+ * matter the screen height, the canopy extends UP into the visible area
+ * rather than being cropped at the top.
+ *
+ * Stations persist in fieldState.stations (timers survive reloads).
+ * Decor is generated once and persisted in fieldState.decor.
  * ────────────────────────────────────────────────────────────────────── */
 
-// One full "working" cycle before a coin is ready.
-const CYCLE_MS  = 6000;
-// Visual flourish duration when a coin is claimed (separate from cycle).
+const CYCLE_MS   = 6000;
 const PRESENT_MS = 1200;
-// Tile display size (native 32 → 2x display).
-const TILE = 64;
+const TILE       = 64;
 
-// Cosy parchment palette for UI overlays. The grass image carries the green.
 const P = {
   banner:     "#fef3d9",
   bannerEdge: "#8a6a3a",
   text:       "#3a2a18",
   textMute:   "#6a553a",
   accent:     "#e88a4f",
-  accentEdge: "#a85820",
   shadow:     "rgba(40,28,14,0.35)",
   ready:      "#f6d44f",
 };
 
-// Station definitions. `art` points to the sprite file used as the fixture.
-// `metalBias` skews the rolled metal toward this index when the cat finishes
-// a cycle — early stations roll low-tier metals, later ones higher tier.
+// Station definitions. `art` is the sprite filename, `artW` the display
+// width (height auto from intrinsic aspect ratio). `catSide` decides which
+// side of the building the cat sits on so it doesn't overlap the fixture.
 const DEFAULT_STATIONS = [
-  { id: "mine",   name: "Copper Mine",  art: "/sprites/rocks_pile.png", artW: 96, artH: 44,
-    x: 28, y: 36, catFlip: false, metalBias: 0 },
-  { id: "forge",  name: "Iron Forge",   art: "/sprites/house.png",      artW: 90, artH: 90,
-    x: 68, y: 42, catFlip: true,  metalBias: 2 },
-  { id: "bench",  name: "Workbench",    art: "/sprites/crate.png",      artW: 64, artH: 28,
-    x: 44, y: 68, catFlip: false, metalBias: 1 },
+  {
+    id: "mine", name: "Copper Mine",
+    art: "/sprites/bld_windmill.png", artW: 130,
+    x: 24, y: 42, catSide: "left", metalBias: 0,
+  },
+  {
+    id: "forge", name: "Iron Forge",
+    art: "/sprites/bld_forge.png", artW: 150,
+    x: 72, y: 42, catSide: "right", metalBias: 2,
+  },
+  {
+    id: "workshop", name: "Workshop",
+    art: "/sprites/bld_cottage.png", artW: 160,
+    x: 48, y: 74, catSide: "left", metalBias: 1,
+  },
 ];
 
-// Decoration sprites scattered for visual interest. Placed once on init and
-// kept in fieldState so the layout is consistent across reloads.
-function generateDecor() {
-  // Trees + bushes around the edges, with a few seeds for variation.
-  // Positions in % of viewport; sizes in display px.
+// Decoration scattered using BOTTOM-relative positioning so canopies extend
+// upward into the visible area and never get cropped at the viewport top.
+function defaultDecor() {
   return [
-    { art: "/sprites/tree_a.png", x: 8,  y: 16, w: 72 },
-    { art: "/sprites/tree_b.png", x: 86, y: 22, w: 84 },
-    { art: "/sprites/tree_a.png", x: 92, y: 78, w: 64 },
-    { art: "/sprites/tree_b.png", x: 6,  y: 84, w: 76 },
-    { art: "/sprites/bush_a.png", x: 18, y: 60, w: 44 },
-    { art: "/sprites/bush_b.png", x: 78, y: 70, w: 50 },
-    { art: "/sprites/bush_a.png", x: 56, y: 18, w: 36 },
-    { art: "/sprites/bush_b.png", x: 36, y: 88, w: 40 },
-    { art: "/sprites/bush_a.png", x: 64, y: 88, w: 36 },
+    // upper edge — trees with canopies near the top of the field
+    { art: "/sprites/tree_a.png", x: 8,  bottom: 62, w: 72 },
+    { art: "/sprites/tree_b.png", x: 92, bottom: 60, w: 80 },
+    // lower edge — trees flanking the bottom
+    { art: "/sprites/tree_a.png", x: 4,  bottom: 12, w: 70 },
+    { art: "/sprites/tree_b.png", x: 96, bottom: 10, w: 84 },
+    // bushes — shorter, less risk of cropping; scatter freely
+    { art: "/sprites/bush_a.png", x: 16, bottom: 30, w: 42 },
+    { art: "/sprites/bush_b.png", x: 86, bottom: 32, w: 48 },
+    { art: "/sprites/bush_a.png", x: 58, bottom: 12, w: 38 },
+    { art: "/sprites/bush_b.png", x: 36, bottom: 8,  w: 44 },
   ];
 }
 
@@ -79,13 +81,11 @@ export default function IdleField() {
   const { xp, coins, commitCoin, fieldState, setFieldState } = useGame();
   const playerLevel = lvl(xp);
 
-  // ─── Station + decor initialisation ──────────────────────────────
-  // Stations live in fieldState so timers persist across reloads. We hydrate
-  // defaults the first time fieldState is empty.
+  // ─── Initialise stations + decor once ──────────────────────────
   const stations = fieldState?.stations || DEFAULT_STATIONS.map(s => ({
     ...s, level: 1, nextReadyAt: Date.now() + CYCLE_MS,
   }));
-  const decor = useMemo(() => fieldState?.decor || generateDecor(), [fieldState?.decor]);
+  const decor = useMemo(() => fieldState?.decor || defaultDecor(), [fieldState?.decor]);
 
   useEffect(() => {
     if (!fieldState?.stations) {
@@ -94,20 +94,20 @@ export default function IdleField() {
         stations: DEFAULT_STATIONS.map(s => ({
           ...s, level: 1, nextReadyAt: Date.now() + CYCLE_MS,
         })),
-        decor: generateDecor(),
+        decor: defaultDecor(),
       }));
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
-  // ─── Tick: re-render every 250ms so timers/progress update ──────
+  // ─── Tick: re-render every 250ms for progress + ready states ──
   const [, force] = useState(0);
   useEffect(() => {
     const id = setInterval(() => force(t => t + 1), 250);
     return () => clearInterval(id);
   }, []);
 
-  // ─── Per-station "presenting" state (coin pop on claim) ─────────
+  // ─── Presenting (coin pop flourish) ─────────────────────────
   const [presenting, setPresenting] = useState({});
   const presentTimers = useRef({});
 
@@ -115,23 +115,19 @@ export default function IdleField() {
     const station = stations.find(s => s.id === stationId);
     if (!station || Date.now() < station.nextReadyAt) return;
 
-    // Roll the metal index, biased toward this station's tier.
-    const rolled = rollOreMetal(Math.random());
-    const bias = station.metalBias || 0;
+    const rolled   = rollOreMetal(Math.random());
+    const bias     = station.metalBias || 0;
     const metalIdx = Math.max(0, Math.min(8, Math.round((rolled + bias * 2) / 3)));
-    const coin = mkCoin(newSeed(), playerLevel, metalIdx);
+    const coin     = mkCoin(newSeed(), playerLevel, metalIdx);
 
-    // Persist to vault (commitCoin handles state + api.tx).
     commitCoin(coin, station.id);
 
-    // Flourish: float a coin up briefly.
     setPresenting(p => ({ ...p, [stationId]: { coin, until: Date.now() + PRESENT_MS } }));
     clearTimeout(presentTimers.current[stationId]);
     presentTimers.current[stationId] = setTimeout(() => {
       setPresenting(p => { const n = { ...p }; delete n[stationId]; return n; });
     }, PRESENT_MS);
 
-    // Reset cycle timer.
     setFieldState(prev => ({
       ...prev,
       stations: (prev?.stations || stations).map(s =>
@@ -145,8 +141,6 @@ export default function IdleField() {
   return (
     <div style={{
       position: "absolute", inset: 0, overflow: "hidden",
-      // Grass tile repeats across the entire field. Falls back to a flat
-      // green if the asset 404s (cosmetic, won't break).
       backgroundColor: "#7da353",
       backgroundImage: 'url("/sprites/grass_tile.png")',
       backgroundRepeat: "repeat",
@@ -154,21 +148,7 @@ export default function IdleField() {
       imageRendering: "pixelated",
     }}>
 
-      {/* Subtle scattered grass-tuft accents — overlay the tuft tile sparsely
-          using a much larger background-size so it shows up here and there
-          but not on every cell. */}
-      <div style={{
-        position: "absolute", inset: 0, pointerEvents: "none",
-        backgroundImage: 'url("/sprites/grass_tile_tuft.png")',
-        backgroundRepeat: "no-repeat",
-        backgroundSize: `${TILE}px ${TILE}px`,
-        // Multiple tufts via a 0-size CSS gradient trick won't work; use
-        // box-shadow on a child instead. For now a single bg position works.
-        opacity: 0.7,
-        imageRendering: "pixelated",
-      }}/>
-
-      {/* ── DECORATION (trees + bushes, behind stations) ── */}
+      {/* ── DECORATION (bottom-anchored — never cropped at top) ── */}
       {decor.map((d, i) => (
         <img
           key={i}
@@ -177,8 +157,9 @@ export default function IdleField() {
           aria-hidden
           style={{
             position: "absolute",
-            left: `${d.x}%`, top: `${d.y}%`,
-            transform: "translate(-50%, -85%)",  // anchor at trunk bottom
+            left: `${d.x}%`,
+            bottom: `${d.bottom}%`,        // anchor by trunk, not by top
+            transform: "translateX(-50%)",
             width: d.w, height: "auto",
             imageRendering: "pixelated",
             filter: `drop-shadow(0 3px 2px ${P.shadow})`,
@@ -206,7 +187,7 @@ export default function IdleField() {
         );
       })}
 
-      {/* ── RECENT FINDS TRAY (bottom, parchment-style) ── */}
+      {/* ── RECENT FINDS (parchment tray, bottom center) ── */}
       <div style={{
         position: "absolute", left: "50%", bottom: 16,
         transform: "translateX(-50%)",
@@ -237,11 +218,20 @@ export default function IdleField() {
 }
 
 /* ─── STATION ─────────────────────────────────────────────────────────────
- * Stone pad + fixture sprite + cat + parchment level banner. The progress
- * bar lives at the bottom of the pad; when ready, an accent halo pulses
- * to draw the eye. Tap-to-claim only fires when ready. */
+ * Layout (cat on left side):
+ *   ┌── Lv banner ──┐
+ *   │ [cat] [BUILDING SPRITE]   │
+ *   │                           │
+ *   │  ── progress bar ──       │
+ *   └─── name label ────────────┘
+ *
+ * The "building base shadow" is the only stone-pad effect — kept light so
+ * the building's own integrated base reads as the ground contact. */
 function Station({ station, ready, progress, presentingCoin, onClaim }) {
   const [hover, setHover] = useState(false);
+
+  const catMood = ready ? "idle" : "walk_up";
+  const catFlip = station.catSide === "right";
 
   return (
     <div
@@ -252,115 +242,108 @@ function Station({ station, ready, progress, presentingCoin, onClaim }) {
         position: "absolute",
         left: `${station.x}%`, top: `${station.y}%`,
         transform: `translate(-50%, -50%) scale(${hover && ready ? 1.04 : 1})`,
-        width: 140, height: 120,
+        width: 200, height: 180,
         cursor: ready ? "pointer" : "default",
         transition: "transform .15s ease",
       }}
     >
-      {/* Stone pad — three repeating tiles forming an oval cluster. The
-          stone_tile is 32x32 native; rendered at 56x56 for slightly larger
-          pixels matching the rest of the scene. */}
-      <div style={{
-        position: "absolute", left: "50%", bottom: 12,
-        transform: "translateX(-50%)",
-        width: 112, height: 56,
-        backgroundImage: 'url("/sprites/stone_tile.png")',
-        backgroundRepeat: "repeat-x",
-        backgroundSize: "56px 56px",
-        // Soft oval mask so the pad reads as round, not a square strip.
-        WebkitMaskImage: "radial-gradient(ellipse 60% 70% at 50% 50%, black 60%, transparent 100%)",
-        maskImage: "radial-gradient(ellipse 60% 70% at 50% 50%, black 60%, transparent 100%)",
-        imageRendering: "pixelated",
-        filter: `drop-shadow(0 2px 0 ${P.shadow})`,
-      }}/>
-
-      {/* Ready halo — only when claimable */}
+      {/* Ready halo — pulses behind everything when claimable */}
       {ready && (
         <div style={{
-          position: "absolute", left: "50%", bottom: 8,
+          position: "absolute", left: "50%", bottom: 24,
           transform: "translateX(-50%)",
-          width: 124, height: 60,
+          width: 140, height: 36,
           borderRadius: "50%",
-          border: `3px solid ${P.ready}`,
-          boxShadow: `0 0 16px ${P.ready}99`,
-          opacity: 0.85,
+          background: `radial-gradient(ellipse at center, ${P.ready}66, transparent 70%)`,
+          boxShadow: `0 0 24px ${P.ready}88`,
+          opacity: 0.95,
           animation: "stationPulse 1.4s ease-in-out infinite",
           pointerEvents: "none",
         }}/>
       )}
 
-      {/* Fixture sprite — anchored to the centre-bottom of the pad */}
+      {/* Building sprite — anchored to centre-bottom */}
       <img
         src={station.art}
         alt={station.name}
         style={{
           position: "absolute",
-          left: "50%", bottom: 22,
+          left: "50%", bottom: 30,
           transform: "translateX(-50%)",
           width: station.artW, height: "auto",
           imageRendering: "pixelated",
           filter: ready
-            ? `drop-shadow(0 3px 0 ${P.shadow})`
-            : `drop-shadow(0 3px 0 ${P.shadow}) saturate(.9) brightness(.96)`,
+            ? `drop-shadow(0 4px 2px ${P.shadow})`
+            : `drop-shadow(0 4px 2px ${P.shadow}) saturate(.9) brightness(.96)`,
           transition: "filter .3s",
           pointerEvents: "none",
         }}
       />
 
-      {/* Cat — sits beside the fixture. Flipped per-station so the cat
-          always faces inward toward the workstation. */}
+      {/* Cat — sits beside the building. catSide controls which side. */}
       <div style={{
         position: "absolute",
-        left: station.catFlip ? "auto" : 0,
-        right: station.catFlip ? 0 : "auto",
-        bottom: 14,
+        left:  station.catSide === "left"  ? "8%"  : "auto",
+        right: station.catSide === "right" ? "8%"  : "auto",
+        bottom: 24,
         filter: `drop-shadow(0 2px 0 ${P.shadow})`,
       }}>
-        <CatSprite mood={ready ? "idle" : "working"} size={56} flip={station.catFlip}/>
+        <CatSprite mood={catMood} size={56} flip={catFlip}/>
       </div>
 
-      {/* Parchment level banner above the station */}
+      {/* Parchment level banner — above building */}
       <div style={{
-        position: "absolute", top: -2, left: "50%",
+        position: "absolute", top: 0, left: "50%",
         transform: "translateX(-50%)",
         background: P.banner, border: `2px solid ${P.bannerEdge}`,
         padding: "2px 9px",
         fontFamily: "'Fraunces',serif", fontWeight: 800, fontSize: 11,
         color: P.text, letterSpacing: 0.6, whiteSpace: "nowrap",
         boxShadow: `0 2px 0 ${P.shadow}`,
+        zIndex: 5,
       }}>
         LV. {station.level || 1}
       </div>
 
-      {/* Pixel-art progress bar — stepped fill, no gradients */}
-      {!ready && (
+      {/* Station name + progress at the bottom */}
+      <div style={{
+        position: "absolute", left: "50%", bottom: 6,
+        transform: "translateX(-50%)",
+        display: "flex", flexDirection: "column", alignItems: "center", gap: 3,
+        whiteSpace: "nowrap",
+      }}>
         <div style={{
-          position: "absolute", left: "50%", bottom: 2,
-          transform: "translateX(-50%)",
-          width: 72, height: 8,
-          background: "#2c1f12",
-          border: `1px solid ${P.bannerEdge}`,
-          padding: 1,
-          boxShadow: `0 1px 0 ${P.shadow}`,
-        }}>
+          fontFamily: "'Fraunces',serif", fontWeight: 800, fontSize: 10,
+          color: P.banner, letterSpacing: 0.8, textTransform: "uppercase",
+          textShadow: `0 0 4px ${P.shadow}, 1px 1px 0 #000, -1px 1px 0 #000, 1px -1px 0 #000, -1px -1px 0 #000`,
+        }}>{station.name}</div>
+        {!ready && (
           <div style={{
-            width: `${Math.round(progress * 100)}%`, height: "100%",
-            background: `linear-gradient(to right, ${P.accent}, ${P.accent} 70%, ${P.ready})`,
-            transition: "width .25s linear",
-          }}/>
-        </div>
-      )}
+            width: 86, height: 7,
+            background: "#2c1f12",
+            border: `1px solid ${P.bannerEdge}`,
+            padding: 1,
+            boxShadow: `0 1px 0 ${P.shadow}`,
+          }}>
+            <div style={{
+              width: `${Math.round(progress * 100)}%`, height: "100%",
+              background: `linear-gradient(to right, ${P.accent}, ${P.accent} 70%, ${P.ready})`,
+              transition: "width .25s linear",
+            }}/>
+          </div>
+        )}
+      </div>
 
-      {/* Coin pop — floats up after claim */}
+      {/* Coin pop on claim */}
       {presentingCoin && (
         <div style={{
-          position: "absolute", left: "50%", top: 6,
+          position: "absolute", left: "50%", top: 30,
           transform: "translateX(-50%)",
           animation: "coinPop 1.2s cubic-bezier(.2,.7,.3,1) forwards",
           pointerEvents: "none",
           zIndex: 10,
         }}>
-          <CoinCanvas coin={presentingCoin} size={32}/>
+          <CoinCanvas coin={presentingCoin} size={36}/>
         </div>
       )}
     </div>
