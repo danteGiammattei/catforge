@@ -270,7 +270,14 @@ function Station({ station, ready, progress, presentingCoin, onClaim }) {
 
   return (
     <div
+      className="cf-tappable"
+      role="button"
+      tabIndex={0}
+      aria-label={`${station.name}${ready ? " — ready to claim" : ""}`}
       onClick={ready ? onClaim : undefined}
+      // iOS Safari sometimes withholds the synthesized click on non-native
+      // interactive elements; bind touchend directly so taps always register.
+      onTouchEnd={ready ? (e) => { e.preventDefault(); onClaim(); } : undefined}
       onMouseEnter={() => setHover(true)}
       onMouseLeave={() => setHover(false)}
       style={{
@@ -278,7 +285,10 @@ function Station({ station, ready, progress, presentingCoin, onClaim }) {
         left: `${station.x}%`, top: `${station.y}%`,
         transform: `translate(-50%, -50%) scale(${hover && ready ? 1.04 : 1})`,
         width: 200, height: 180,
-        cursor: ready ? "pointer" : "default",
+        // Always pointer — iOS treats cursor:pointer as the "this is tappable"
+        // signal even when the actual claim only fires while ready.
+        cursor: "pointer",
+        touchAction: "manipulation",
         transition: "transform .15s ease",
       }}
     >

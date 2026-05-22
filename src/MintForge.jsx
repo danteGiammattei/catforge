@@ -206,10 +206,10 @@ export default function MintForge(){
   /* ── layout ────────────────────────────────────────────────────── */
   return (
     <GameContext.Provider value={g}>
-    <div style={{...F, minHeight:"100vh", background:t.bg, color:t.text, position:"relative", overflow:"hidden"}}>
+    <div style={{...F, height:"100dvh", minHeight:"100vh", maxHeight:"100dvh", background:t.bg, color:t.text, position:"relative", overflow:"hidden", display:"flex", flexDirection:"column"}}>
 
       {/* ═══ TOP BAR ═══ */}
-      <div style={{display:"flex", alignItems:"center", justifyContent:"space-between", padding:"10px 14px", borderBottom:`1px solid ${t.border}`, background:t.nav, backdropFilter:"blur(20px)", WebkitBackdropFilter:"blur(20px)", position:"sticky", top:0, zIndex:80}}>
+      <div style={{display:"flex", alignItems:"center", justifyContent:"space-between", padding:"10px 14px", borderBottom:`1px solid ${t.border}`, background:t.nav, position:"relative", zIndex:80, flexShrink:0}}>
         {/* Hamburger + logo */}
         <div style={{display:"flex", alignItems:"center", gap:10}}>
           <button
@@ -247,7 +247,7 @@ export default function MintForge(){
       </div>
 
       {/* ═══ CONTENT ═══ */}
-      <div style={{position:"relative", height:"calc(100vh - 56px)", overflow:"hidden"}}>
+      <div style={{position:"relative", flex:1, minHeight:0, overflow:"hidden"}}>
         {tab === "field"   && <IdleField/>}
         {tab === "vault"   && <Vault/>}
         {tab === "profile" && <Profile/>}

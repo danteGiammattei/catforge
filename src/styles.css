@@ -17,7 +17,22 @@
 /* Resets that Tailwind's preflight doesn't fully cover for our needs */
 *       { box-sizing: border-box; margin: 0; padding: 0; }
 html,body{ height: 100%; overscroll-behavior: none; overflow-x: hidden; max-width: 100vw; }
-button  { -webkit-tap-highlight-color: transparent; }
+button  { -webkit-tap-highlight-color: transparent; cursor: pointer; }
+
+/* ── iOS / touch interaction fixes ──────────────────────────────────────────
+ * iOS Safari only reliably dispatches click events on elements it considers
+ * interactive. Buttons and links qualify automatically; a bare <div onClick>
+ * does NOT unless it carries cursor:pointer (or role=button + tabindex). We
+ * set cursor:pointer on our tappable station class below. We also kill the
+ * 300ms tap delay and the grey tap flash app-wide. */
+* { -webkit-tap-highlight-color: transparent; }
+html { -webkit-text-size-adjust: 100%; }
+.cf-tappable {
+  cursor: pointer;
+  touch-action: manipulation;   /* removes 300ms delay, prevents double-tap zoom */
+  -webkit-user-select: none;
+  user-select: none;
+}
 
 ::-webkit-scrollbar              { width: 5px; height: 5px; }
 ::-webkit-scrollbar-track        { background: transparent; }

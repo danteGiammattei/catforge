@@ -183,9 +183,11 @@ export default function LevelEditor() {
               key={i}
               onMouseDown={() => { setPainting(true); applyTool(i); }}
               onMouseEnter={() => { if (painting && tool === "paint") setTileAt(i, selected); }}
+              onTouchStart={(e) => { e.preventDefault(); applyTool(i); }}
               style={{
                 ...tileStyle(tileIdx, cell),
                 cursor: "crosshair",
+                touchAction: "none",
               }}
             />
           ))}

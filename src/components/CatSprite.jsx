@@ -22,10 +22,10 @@ import { useEffect, useState } from "react";
  * ────────────────────────────────────────────────────────────────────── */
 
 const FRAME_SETS = {
-  // Sitting idle — frames 429-450 from the sheet (22 frames). The cat sits
-  // facing camera, tail swishing/curling. This is the primary outdoor pose
-  // Dante specified. 22 frames at ~9fps ≈ 2.4s loop, nice and smooth.
-  idle: Array.from({ length: 22 }, (_, i) => `/sprites/cat_idle_${i}.png`),
+  // Combined idle loop — 66 frames: sitting (429-450), washing (352-359),
+  // and yawn/stretch/lie-down/settle (369-404). A long characterful cycle
+  // where the cat sits, grooms, yawns, stretches, lies down and gets back up.
+  idle: Array.from({ length: 66 }, (_, i) => `/sprites/cat_idle_${i}.png`),
   // Loaf pose (frames 33-34) — used while a station is "working".
   sleep: [
     "/sprites/cat_sleep_0.png",
@@ -46,7 +46,7 @@ const FRAME_SETS = {
 FRAME_SETS.walk_left = FRAME_SETS.walk_right;
 
 const DEFAULT_FPS = {
-  idle: 9,         // smooth tail-swish sitting loop (22 frames)
+  idle: 5,         // slowed down — deliberate, relaxed idle behaviors
   sleep: 0.8,      // very slow — peaceful breathing
   walk_up: 6,
   walk_right: 8,
