@@ -26,6 +26,7 @@ import MarksCounter from "./components/MarksCounter.jsx";
 import IdleField    from "./screens/IdleField.jsx";
 import Profile      from "./screens/Profile.jsx";
 import Vault        from "./screens/Vault.jsx";
+import LevelEditor  from "./screens/LevelEditor.jsx";
 
 export default function MintForge(){
   /* ── auth ───────────────────────────────────────────────────────── */
@@ -250,6 +251,7 @@ export default function MintForge(){
         {tab === "field"   && <IdleField/>}
         {tab === "vault"   && <Vault/>}
         {tab === "profile" && <Profile/>}
+        {tab === "editor"  && <LevelEditor/>}
         {tab === "social"  && <Placeholder t={t} F={F} FR={FR} title="Social" body="Friends and visiting other villages. Coming soon."/>}
       </div>
 
@@ -267,6 +269,7 @@ export default function MintForge(){
             <NavItem t={t} F={F} active={tab==="vault"}   icon="🪙" label="Vault"   onClick={()=>{setTab("vault"); setMenuOpen(false);}}/>
             <NavItem t={t} F={F} active={tab==="profile"} icon="🐾" label="Profile" onClick={()=>{setTab("profile"); setMenuOpen(false);}}/>
             <NavItem t={t} F={F} active={tab==="social"}  icon="🤝" label="Social"  onClick={()=>{setTab("social"); setMenuOpen(false);}}/>
+            <NavItem t={t} F={F} active={tab==="editor"}  icon="🛠" label="Level Editor" onClick={()=>{setTab("editor"); setMenuOpen(false);}}/>
           </div>
         </>
       )}

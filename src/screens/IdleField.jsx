@@ -2,6 +2,7 @@ import { useState, useRef, useEffect, useCallback, useMemo } from "react";
 import { useGame } from "../lib/GameContext.js";
 import { mkCoin, newSeed, lvl } from "../lib/coin.js";
 import { rollOreMetal } from "../lib/data.js";
+import { loadMap } from "../lib/tilemap.js";
 import CoinCanvas from "../components/CoinCanvas.jsx";
 import CatSprite from "../components/CatSprite.jsx";
 
@@ -61,18 +62,18 @@ const DEFAULT_STATIONS = [
 
 // Decoration scattered using BOTTOM-relative positioning so canopies extend
 // upward into the visible area and never get cropped at the viewport top.
-// The new trees are tiny pokemon-style sprites (~32x38px native) so we
-// display them quite large (60-80px wide) without losing visual quality —
-// they're clean, single-shape silhouettes that read well at any scale.
+// Trees are the 3 detailed ones from TX_Plant (tree_a/b/c). Bushes are the
+// existing small pokemon-style clumps. CSS drop-shadow adds ground contact
+// since we stripped the baked-in shadows during extraction.
 function defaultDecor() {
   return [
-    // Upper-area trees flanking the windmill + forge
-    { art: "/sprites/tree_b.png", x: 8,  bottom: 52, w: 60 },
-    { art: "/sprites/tree_a.png", x: 92, bottom: 50, w: 60 },
-    // Lower trees flanking the cottage
-    { art: "/sprites/tree_a.png", x: 6,  bottom: 18, w: 56 },
-    { art: "/sprites/tree_b.png", x: 94, bottom: 16, w: 56 },
-    // Small bushes scattered for texture
+    // Upper-area trees
+    { art: "/sprites/tree_b.png", x: 8,  bottom: 50, w: 78 },
+    { art: "/sprites/tree_a.png", x: 92, bottom: 48, w: 82 },
+    // Lower trees
+    { art: "/sprites/tree_c.png", x: 6,  bottom: 16, w: 70 },
+    { art: "/sprites/tree_b.png", x: 94, bottom: 14, w: 74 },
+    // Small bushes for texture
     { art: "/sprites/bush_a.png", x: 24, bottom: 30, w: 36 },
     { art: "/sprites/bush_b.png", x: 78, bottom: 32, w: 40 },
     { art: "/sprites/bush_a.png", x: 62, bottom: 14, w: 32 },
@@ -163,15 +164,23 @@ export default function IdleField() {
 
   const recentCoins = coins.slice(0, 5);
 
+  // Load the painted level map (from the Level Editor) if one exists. When
+  // present we render it as a tile grid; otherwise we fall back to the simple
+  // repeating grass tile.
+  const levelMap = useMemo(() => loadMap(), []);
+
   return (
     <div style={{
       position: "absolute", inset: 0, overflow: "hidden",
       backgroundColor: "#7da353",
-      backgroundImage: 'url("/sprites/grass_tile.png")',
+      backgroundImage: levelMap ? "none" : 'url("/sprites/grass_tile.png")',
       backgroundRepeat: "repeat",
       backgroundSize: `${TILE}px ${TILE}px`,
       imageRendering: "pixelated",
     }}>
+
+      {/* ── PAINTED GROUND LAYER (if a level map was saved) ── */}
+      {levelMap && <GroundLayer map={levelMap}/>}
 
       {/* ── DECORATION (bottom-anchored — never cropped at top) ── */}
       {decor.map((d, i) => (
@@ -255,7 +264,8 @@ export default function IdleField() {
 function Station({ station, ready, progress, presentingCoin, onClaim }) {
   const [hover, setHover] = useState(false);
 
-  const catMood = ready ? "idle" : "sleep";
+  // Cat sits (idle, tail-swishing) in front of every station, as specified.
+  const catMood = "idle";
   const catFlip = station.catSide === "right";
 
   return (
@@ -418,5 +428,40 @@ function BuildingImg({ src, alt, width, ready }) {
         pointerEvents: "none",
       }}
     />
+  );
+}
+
+/* ─── GROUND LAYER ───────────────────────────────────────────────────────
+ * Renders a saved tilemap from the Level Editor as the field's ground. Tiles
+ * scale fluidly with the viewport (vw units) so the painted layout always
+ * covers the full width. Each cell shows one tile from the 8x8 tileset via
+ * the percentage background-position trick. Sits behind stations + decor. */
+const TILESET_COLS = 8;
+const TILESET_ROWS = 8;
+
+function GroundLayer({ map }) {
+  const cellVw = 100 / map.cols;
+  return (
+    <div style={{
+      position: "absolute", inset: 0, zIndex: 0,
+      display: "grid",
+      gridTemplateColumns: `repeat(${map.cols}, ${cellVw}vw)`,
+      gridAutoRows: `${cellVw}vw`,
+      pointerEvents: "none",
+    }}>
+      {map.tiles.map((idx, i) => {
+        const col = idx % TILESET_COLS;
+        const row = Math.floor(idx / TILESET_COLS);
+        return (
+          <div key={i} style={{
+            width: "100%", height: "100%",
+            backgroundImage: 'url("/tiles/grass_set.png")',
+            backgroundSize: `${TILESET_COLS * 100}% ${TILESET_ROWS * 100}%`,
+            backgroundPosition: `${col / (TILESET_COLS - 1) * 100}% ${row / (TILESET_ROWS - 1) * 100}%`,
+            imageRendering: "pixelated",
+          }}/>
+        );
+      })}
+    </div>
   );
 }

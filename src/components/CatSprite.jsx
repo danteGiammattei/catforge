@@ -22,15 +22,11 @@ import { useEffect, useState } from "react";
  * ────────────────────────────────────────────────────────────────────── */
 
 const FRAME_SETS = {
-  // 3 calm sitting frames — frames 0, 2, 3 from row 0. Frame 1 is the cat
-  // standing (different pose) so we skip it for a smooth breathing loop.
-  idle: [
-    "/sprites/cat_idle_0.png",
-    "/sprites/cat_idle_2.png",
-    "/sprites/cat_idle_3.png",
-  ],
-  // Loaf pose, head up + ears visible — frames 33, 34 from row 3. Two frames
-  // alternated slowly = breathing sleeping cat. The default outdoor pose.
+  // Sitting idle — frames 429-450 from the sheet (22 frames). The cat sits
+  // facing camera, tail swishing/curling. This is the primary outdoor pose
+  // Dante specified. 22 frames at ~9fps ≈ 2.4s loop, nice and smooth.
+  idle: Array.from({ length: 22 }, (_, i) => `/sprites/cat_idle_${i}.png`),
+  // Loaf pose (frames 33-34) — used while a station is "working".
   sleep: [
     "/sprites/cat_sleep_0.png",
     "/sprites/cat_sleep_1.png",
@@ -38,10 +34,6 @@ const FRAME_SETS = {
   walk_up: [
     "/sprites/cat_walk_up_0.png", "/sprites/cat_walk_up_1.png",
     "/sprites/cat_walk_up_2.png", "/sprites/cat_walk_up_3.png",
-  ],
-  walk_down: [
-    "/sprites/cat_walk_down_0.png", "/sprites/cat_walk_down_1.png",
-    "/sprites/cat_walk_down_2.png", "/sprites/cat_walk_down_3.png",
   ],
   walk_right: [
     "/sprites/cat_walk_right_0.png", "/sprites/cat_walk_right_1.png",
@@ -54,10 +46,9 @@ const FRAME_SETS = {
 FRAME_SETS.walk_left = FRAME_SETS.walk_right;
 
 const DEFAULT_FPS = {
-  idle: 1.5,       // slow breathing
-  sleep: 0.8,      // very slow — cats sleep peacefully
-  walk_up: 6,      // brisk walk
-  walk_down: 6,
+  idle: 9,         // smooth tail-swish sitting loop (22 frames)
+  sleep: 0.8,      // very slow — peaceful breathing
+  walk_up: 6,
   walk_right: 8,
   walk_left: 8,
 };
