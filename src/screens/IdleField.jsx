@@ -61,22 +61,22 @@ const DEFAULT_STATIONS = [
 
 // Decoration scattered using BOTTOM-relative positioning so canopies extend
 // upward into the visible area and never get cropped at the viewport top.
-// X values kept between 10-90 so trees don't hit the side edges on narrow
-// screens. Bottom values kept moderate (15-50) so canopies stay inside the
-// field even on short viewports.
+// The new trees are tiny pokemon-style sprites (~32x38px native) so we
+// display them quite large (60-80px wide) without losing visual quality —
+// they're clean, single-shape silhouettes that read well at any scale.
 function defaultDecor() {
   return [
-    // Mid-height trees flanking the upper area
-    { art: "/sprites/tree_a.png", x: 12, bottom: 50, w: 70 },
-    { art: "/sprites/tree_b.png", x: 88, bottom: 48, w: 78 },
-    // Lower trees flanking the bottom
-    { art: "/sprites/tree_a.png", x: 10, bottom: 16, w: 68 },
-    { art: "/sprites/tree_b.png", x: 90, bottom: 14, w: 80 },
-    // Bushes — short, scattered freely
-    { art: "/sprites/bush_a.png", x: 22, bottom: 30, w: 38 },
-    { art: "/sprites/bush_b.png", x: 80, bottom: 32, w: 44 },
-    { art: "/sprites/bush_a.png", x: 60, bottom: 14, w: 34 },
-    { art: "/sprites/bush_b.png", x: 38, bottom: 10, w: 40 },
+    // Upper-area trees flanking the windmill + forge
+    { art: "/sprites/tree_b.png", x: 8,  bottom: 52, w: 60 },
+    { art: "/sprites/tree_a.png", x: 92, bottom: 50, w: 60 },
+    // Lower trees flanking the cottage
+    { art: "/sprites/tree_a.png", x: 6,  bottom: 18, w: 56 },
+    { art: "/sprites/tree_b.png", x: 94, bottom: 16, w: 56 },
+    // Small bushes scattered for texture
+    { art: "/sprites/bush_a.png", x: 24, bottom: 30, w: 36 },
+    { art: "/sprites/bush_b.png", x: 78, bottom: 32, w: 40 },
+    { art: "/sprites/bush_a.png", x: 62, bottom: 14, w: 32 },
+    { art: "/sprites/bush_b.png", x: 36, bottom: 10, w: 38 },
   ];
 }
 
@@ -297,15 +297,18 @@ function Station({ station, ready, progress, presentingCoin, onClaim }) {
         ready={ready}
       />
 
-      {/* Cat — sits beside the building. catSide controls which side. */}
+      {/* Cat — sits beside the building. catSide controls which side.
+          Display size 88px (sprite is 32x32 native, ~22px of actual cat
+          per frame). At 88px display the cat occupies ~60px effective —
+          chunky enough to be clearly recognizable as a sleeping cat. */}
       <div style={{
         position: "absolute",
-        left:  station.catSide === "left"  ? "8%"  : "auto",
-        right: station.catSide === "right" ? "8%"  : "auto",
-        bottom: 24,
+        left:  station.catSide === "left"  ? "-2%"  : "auto",
+        right: station.catSide === "right" ? "-2%"  : "auto",
+        bottom: 22,
         filter: `drop-shadow(0 2px 0 ${P.shadow})`,
       }}>
-        <CatSprite mood={catMood} size={56} flip={catFlip}/>
+        <CatSprite mood={catMood} size={88} flip={catFlip}/>
       </div>
 
       {/* Parchment level banner — above building */}
